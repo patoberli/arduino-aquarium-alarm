@@ -8,7 +8,7 @@ Please read the text inside the .ino sketch, there are some fields you have to m
 ## The design 
 Please note, the temp sensor is the wrong model on this image. It also doesn't need to be attached to the breadboard, this is just for illustration!
 
-![alt text](https://github.com/patoberli/arduino-aquarium-alarm/blob/2.0/fritzing_sketch_2.0_bb.png "Fritzing Design")
+![alt text](https://github.com/patoberli/arduino-aquarium-alarm/blob/2.0/fritzing_sketch_bb.png "Fritzing Design")
 
 ## Required parts:
 - Adafruit FONA 32u4
