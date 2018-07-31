@@ -1,7 +1,7 @@
 
 /* Adafruit FONA GSM 32u4 module Template
 
-modified 20180718 by Patrick Oberli
+modified 20180731 by Patrick Oberli
 
 Required parts:
 - Adafruit FONA 32u4
@@ -12,7 +12,7 @@ Required parts:
 	- There is a variant with longer cable, I haven't tested it: https://www.adafruit.com/product/3237
 - 12-pin and 16-pin feather stacking headers
 	- https://www.adafruit.com/product/2830
-- 500 mAh 3.7 V battery, better at least 850 mAh (to high capacity will cause long delays in the power alarm!)
+- 500 mAh 3.7 V battery, better at least 850 mAh 
 	- https://www.adafruit.com/product/258 (this is the 1200 mAh model)
 - micro SIM card with support for 2G (GSM), check your operators, some are starting to turn of GSM
 - Breadboard with 40 or more rows
@@ -24,6 +24,7 @@ Required parts:
 - Piezo speaker (also known as buzzer)
 - 100 Ohm resistor (for piezo)
 - 220 Ohm resistor (for LCD)
+- two > 20 kOhm resistors for USB power check
 - DS18B20 temp sensor with DFR0055 Plugable Terminal adapter (jumper set to Pull Up)
 	- https://www.aliexpress.com/item/DS18b20-Water-Temperature-Sensor-Stainless-Steel-Probe-Temperature-Sensor-for-Arduino-SR002/32538132994.html
 	- this sensor is sadly NOT salt water resistant, it requires you to protect it from direct water contact or it will quickly corrode/rust. 
@@ -67,6 +68,8 @@ uint8_t type;
 
 /******** End Adafruit FONA template ********/
 
+
+/* Start LCD display Arduino.cc template*/
 /***************************************************************
 Insturciton:
 Connection:
@@ -136,10 +139,10 @@ http://www.arduino.cc/en/Tutorial/LiquidCrystalHelloWorld
 // with the arduino pin number it is connected to
 const int rs = 12, en = 11, d4 = 1, d5 = 0, d6 = 3, d7 = 2; // d4 changed from 5 to 1, d5 changed from 4 to 0
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-
+/* End LCD display Arduino.cc template*/
 
 // Modify for your own liking, number in brackets is the maximum ammount of allowed characters
-char mobilenumber[20] = "+000000000";
+char mobilenumber[20] = "+xxxxxxxxx";
 char messagepower[141] = "Aquarium without power!";
 char messagetemp[141] = "Temperature > 27 deg C";
 
@@ -200,71 +203,19 @@ void setup() {
     Serial.print("Module IMEI: "); Serial.println(imei);
   }
   /* End initialize FONA module */
-  delay(3000);
+  delay(10000);
 }
 
 
 void loop() {
-  // put your main code here, to run repeatedly:
-/*
-  // read the RSSI
-  uint8_t n = fona.getRSSI();
-  int8_t r;
-  // print the RSSI to serial
-  Serial.print(F("RSSI = ")); Serial.print(n); Serial.print(": ");
-  if (n == 0) r = -115;
-  if (n == 1) r = -111;
-  if (n == 31) r = -52;
-  if ((n >= 2) && (n <= 30)) {
-    r = map(n, 2, 30, -110, -54);
-  }
-  Serial.print(r); Serial.println(F(" dBm"));
-  delay(1000);
-*/
-  uint16_t vbat;
-  Serial.print(F("Voltage Battery - Debug = ")); Serial.println(vbat);
-
-  fona.getBattVoltage(&vbat);
-
- /***************************************************************
- Adjust the vbat number according to your battery. Use the Adafruit FONAtest sketch 
- download here: https://learn.adafruit.com/adafruit-feather-32u4-fona/fona-test
- charge your battery to 100% and use the [b] function to check the maximum voltage of your battery. 
- Reduce the vbat number by around 100-200, this will cause a power alarm after around 10-30 minutes, 
- depending on the attached hardware. Requires some finetuning per battery.
- The percentage didn't work well in my case, as the battery % number sometimes dropped to 90%  before
- being charged by the FONA 32u4 board. Piezo will add another 1 second wait time, lower down in the code.
- ***************************************************************/
-
-  if (vbat >= 4050) { // check every 5 seconds if the power is still ok, or the unit is running from the battery power
-    Serial.println("Power OK");
-    Serial.print(F("Voltage Battery = ")); Serial.print(vbat); Serial.println(F(" mV"));
-    digitalWrite(13, LOW);
-	VOLTAGESMSREQ = 0;
-	VOLTAGESMSSENT = 0;
-    delay(5000);
-  } else {
-    Serial.print("Power message: "); Serial.println(messagepower);
-    Serial.print(F("Battery low = ")); Serial.print(vbat); Serial.println(F(" mV!"));
-    digitalWrite(13, HIGH);
-	VOLTAGESMSREQ = 1;
-    delay(5000);
-  }
-
-
-
-//Serial.print("SMS Number: "); Serial.println(mobilenumber);
-//Serial.print("No Power message: "); Serial.println(messagepower);
-//Serial.print("Temp message: "); Serial.println(messagetemp);
-
-
 
   while (fona.available()) {
     Serial.write(fona.read());
   }
-
+   
+  // read and print the temperature to console
   float temperature = getTemp();
-  Serial.println(temperature);
+  Serial.print("Temperature: "); Serial.println(temperature);
 
   delay(100); //just here to slow down the output so it is easier to read
 
@@ -280,11 +231,14 @@ void loop() {
 	  TEMPERATURESMSREQ = 1;
 	  Serial.print("Temperature to high!: "); Serial.println(temperature);
   }
-  else
+  else if (temperature <= 25.8 && temperature > 23.5) // reactivate the alarm, turn of buzzer
   {
 	  noTone(10);
 	  TEMPERATURESMSREQ = 0;
 	  TEMPERATURESMSSENT = 0;
+  }
+  else {
+  // do nothing, temperature is not to warm
   }
   
   while (VOLTAGESMSREQ == 1 && VOLTAGESMSSENT == 0)
@@ -299,6 +253,38 @@ void loop() {
 	  TEMPERATURESMSSENT = 1;
   }
 
+  // read voltage on USB pin, to check of power is still supplied.
+  // read the input on analog pin 0:
+  int sensorValue = analogRead(A0);
+  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
+  float voltage = sensorValue * (3.3 / 1023.0);
+  // print out the value you read:
+  Serial.print("Measured power on USB: ");  Serial.println(voltage);
+
+  // set the cursor to column 0, line 1
+  // (note: line 1 is the second row, since counting begins with 0):
+  //lcd.setCursor(9, 1);
+
+  // print the temperature on the LCD, use this for debugging the voltage:
+  //lcd.print(voltage);
+
+  if (voltage >= 2.10) // power ok, the 2.10 might need some fine tuning, depending on resistors and cable lengths
+  {
+	  digitalWrite(13, LOW);
+	  VOLTAGESMSREQ = 0;
+	  VOLTAGESMSSENT = 0;
+	  noTone(10);
+	  delay(5000);
+
+  }
+  else // no power from USB
+  {
+	  digitalWrite(13, HIGH);
+	  VOLTAGESMSREQ = 1; // comment this while testing, to disable sending SMS
+	  tone(10, 5000, 1000); // Audio alarm, add piezo to Pin 10, frequency 5000 Hz, 1 second beep duration
+	  delay(4000);
+  }
+
   // flush input
   flushSerial();
 
@@ -306,13 +292,8 @@ void loop() {
 
 void sendSMSpower() {
 	// send an SMS!
-	//char sendto[21], message[141]; // old code
 	flushSerial();
-	//Serial.print(F("Send to #"));  // old code
-	//readline(sendto, 20); // old code
 	Serial.println(mobilenumber);
-	//Serial.print(F("Type out one-line message (140 char): ")); // old code
-	//readline(message, 140); // old code
 	Serial.println(messagepower);
 	if (!fona.sendSMS(mobilenumber, messagepower)) {
 		Serial.println(F("Failed"));
@@ -324,13 +305,8 @@ void sendSMSpower() {
 
 void sendSMStemp() {
 	// send an SMS!
-	//char sendto[21], message[141]; // old code
 	flushSerial();
-	//Serial.print(F("Send to #")); // old code
-	//readline(sendto, 20); // old code
 	Serial.println(mobilenumber);
-	//Serial.print(F("Type out one-line message (140 char): ")); // old code
-	//readline(message, 140); // old code
 	Serial.println(messagetemp);
 	if (!fona.sendSMS(mobilenumber, messagetemp)) {
 		Serial.println(F("Failed"));
