@@ -1,4 +1,6 @@
-Documentation is outdated for Arduino MKR 1500, need to update it.
+Documentation is outdated for Arduino MKR 1500, I need to update it.
+Please check .ino file for latest information. 
+Important changes: new screen, arduino_secrets.h file, slightly different cabling.
 
 
 # Arduino aquarium monitor with alarm
