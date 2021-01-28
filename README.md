@@ -1,3 +1,6 @@
+Documentation is outdated for Arduino MKR 1500, need to update it.
+
+
 # Arduino aquarium monitor with alarm
 ## Arduino based aquarium alarm which checks temperature and supply voltage and alarms by SMS.
 
