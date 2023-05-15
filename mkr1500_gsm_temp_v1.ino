@@ -1,7 +1,7 @@
 
 /* Adafruit FONA GSM 32u4 module Template, massively adjusted for Arduino MKR NB 1500
 
-modified 20200925 by Patrick Oberli
+modified 20230515 by Patrick Oberli
 
 Required parts:
 - Arduino MKR NB 1500 incl. antenna
@@ -9,7 +9,7 @@ Required parts:
 - 1500 mAh 3.7 V battery minimum
 	- https://www.adafruit.com/product/2011 (this is the 2000 mAh model)
 - micro SIM card with support for 4G (LTE), check your operators
-- Adafruit SSD1306 SPI Display
+- Adafruit SSD1306 SPI Display -> this display lives for about 2 years and then can't anymore be read
 - Breadboard with 40 or more rows
 - at least 20 dupond jumper wires
 - Piezo speaker (also known as buzzer)
@@ -23,7 +23,7 @@ Required parts:
 	- Manual DFR0055 https://www.dfrobot.com/wiki/index.php/Terminal_sensor_adapter_V2_SKU:DFR0055
 */
 
-// Install the libraries from the Arduino IDE Library Manager named "MKRWAN", "MKRNB" and "OneWire" (by Jim Studt, Tom Pollard, ...) 
+// Install the libraries from the Arduino IDE Library Manager named "Adafruit SSD1306", "MKRWAN", "MKRNB" and "OneWire" (by Jim Studt, Tom Pollard, ...) 
 #include <gfxfont.h>
 #include <Adafruit_SPITFT_Macros.h>
 #include <Adafruit_SPITFT.h>
@@ -73,7 +73,7 @@ OneWire ds(DS18S20_Pin);
 // Modify for your own liking, number in brackets is the maximum ammount of allowed characters
 char mobilenumber[20] = "+00000000000";
 char messagepower[141] = "Aquarium without power!";
-char messagetemp[141] = "Temperature > 27 deg C";
+char messagetemp[141] = "Temperature out of range!";
 
 int TEMPERATURESMSREQ = 0;
 int TEMPERATURESMSSENT = 0;
@@ -146,13 +146,19 @@ void loop() {
   // print the temperature on the LCD:
   display.print(temperature);
   display.display();
-  if (temperature >= 30) //measure if temperate is >= 27°C and produce an audio alarm if to high
+  if (temperature >= 27) //measure if temperate is >= 27°C and produce an audio alarm if to high
   {
 	  tone(10, 5000, 1000); // Audio alarm, add piezo to Pin 10, frequency 5000 Hz, 1 second beep duration
 	  TEMPERATURESMSREQ = 1;
 	  Serial.print("Temperature to high!: "); Serial.println(temperature);
   }
-  else if (temperature <= 25.8 && temperature > 23.5) // reactivate the alarm, turn of buzzer
+  else if (temperature <= 23) //measure if temperate is <= 23°C and produce an audio alarm if to low
+  {
+	  tone(10, 5000, 1000); // Audio alarm, add piezo to Pin 10, frequency 5000 Hz, 1 second beep duration
+	  TEMPERATURESMSREQ = 1;
+	  Serial.print("Temperature to low!: "); Serial.println(temperature);
+  }
+  else if (temperature <= 25.8 && temperature > 23.6) // reactivate the alarm, turn of buzzer
   {
 	  noTone(10);
 	  TEMPERATURESMSREQ = 0;
